@@ -8,7 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import pytz
-from pydantic import AnyHttpUrl, BaseModel, Extra, root_validator, validator
+from pydantic import field_validator, model_validator, ConfigDict, AnyHttpUrl, BaseModel, ValidationInfo
 
 from keep.api.models.severity_base import SeverityBaseInterface
 
@@ -69,7 +69,7 @@ class AlertErrorDto(BaseModel):
 
 
 class AlertDto(BaseModel):
-    id: str | None
+    id: str | None = None
     name: str
     status: AlertStatus
     severity: AlertSeverity
@@ -90,8 +90,8 @@ class AlertDto(BaseModel):
     description_format: str | None = None  # Can be 'markdown' or 'html'
     pushed: bool = False  # Whether the alert was pushed or pulled from the provider
     event_id: str | None = None  # Database alert id
-    url: AnyHttpUrl | None = None
-    imageUrl: AnyHttpUrl | None = None
+    url: str | None = None
+    imageUrl: str | None = None
     labels: dict | None = {}
     fingerprint: str | None = (
         None  # The fingerprint of the alert (used for alert de-duplication)
@@ -141,18 +141,21 @@ class AlertDto(BaseModel):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    @validator("fingerprint", pre=True, always=True)
-    def assign_fingerprint_if_none(cls, fingerprint, values):
-        return get_fingerprint(fingerprint, values)
+    @field_validator("fingerprint", mode="before")
+    @classmethod
+    def assign_fingerprint_if_none(cls, fingerprint, info: ValidationInfo):
+        return get_fingerprint(fingerprint, info.data)
 
-    @validator("deleted", pre=True, always=True)
-    def validate_deleted(cls, deleted, values):
+    @field_validator("deleted", mode="before")
+    @classmethod
+    def validate_deleted(cls, deleted, info: ValidationInfo):
         if isinstance(deleted, bool):
             return deleted
         if isinstance(deleted, list):
-            return values.get("lastReceived") in deleted
+            return info.data.get("lastReceived") in deleted
 
-    @validator("url", pre=True)
+    @field_validator("url", mode="before")
+    @classmethod
     def prepend_https(cls, url):
         if not isinstance(url, str):
             return url
@@ -167,7 +170,8 @@ class AlertDto(BaseModel):
             url = f"https://{url}"
         return urllib.parse.quote(url, safe="/:?=&")
 
-    @validator("lastReceived", pre=True, always=True)
+    @field_validator("lastReceived", mode="before")
+    @classmethod
     def validate_last_received(cls, last_received):
         def convert_to_iso_format(date_string):
             try:
@@ -207,8 +211,10 @@ class AlertDto(BaseModel):
 
         raise ValueError(f"Invalid date format: {last_received}")
 
-    @validator("dismissed", pre=True, always=True)
-    def validate_dismissed(cls, dismissed, values):
+    @field_validator("dismissed", mode="before")
+    @classmethod
+    def validate_dismissed(cls, dismissed, info: ValidationInfo):
+        values = info.data
         # normzlize dismissed value
         if isinstance(dismissed, str):
             dismissed = dismissed.lower() == "true"
@@ -232,7 +238,8 @@ class AlertDto(BaseModel):
         )
         return dismissed
 
-    @validator("description_format")
+    @field_validator("description_format")
+    @classmethod
     def validate_description_format(cls, description_format):
         if description_format is None:
             return None
@@ -241,7 +248,8 @@ class AlertDto(BaseModel):
             raise ValueError(f"description_format must be one of {valid_formats}")
         return description_format
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def set_default_values(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         # Check and set id:
         if not values.get("id"):
@@ -290,7 +298,8 @@ class AlertDto(BaseModel):
         return values
 
     # after root_validator to ensure that the values are set
-    @root_validator(pre=False)
+    @model_validator(mode="before")
+    @classmethod
     def validate_status(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         # if dismissed, change status to SUPPRESSED
         # note this is happen AFTER validate_dismissed which already consider
@@ -298,41 +307,38 @@ class AlertDto(BaseModel):
         # if values.get("dismissed"):
         #     values["status"] = AlertStatus.SUPPRESSED
         return values
-
-    class Config:
-        extra = Extra.allow
-        schema_extra = {
-            "examples": [
-                {
-                    "id": "1234",
-                    "name": "Pod 'api-service-production' lacks memory",
-                    "status": "firing",
-                    "lastReceived": "2021-01-01T00:00:00.000Z",
-                    "environment": "production",
-                    "duplicateReason": None,
-                    "service": "backend",
-                    "source": ["prometheus"],
-                    "message": "The pod 'api-service-production' lacks memory causing high error rate",
-                    "description": "Due to the lack of memory, the pod 'api-service-production' is experiencing high error rate",
-                    "severity": "critical",
-                    "pushed": True,
-                    "url": "https://www.keephq.dev?alertId=1234",
-                    "labels": {
-                        "pod": "api-service-production",
-                        "region": "us-east-1",
-                        "cpu": "88",
-                        "memory": "100Mi",
-                    },
-                    "ticket_url": "https://www.keephq.dev?enrichedTicketId=456",
-                    "fingerprint": "1234",
-                }
-            ]
-        }
-        use_enum_values = True
-        json_encoders = {
-            # Converts enums to their values for JSON serialization
-            Enum: lambda v: v.value,
-        }
+    # TODO[pydantic]: The following keys were removed: `json_encoders`.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
+    model_config = ConfigDict(extra="allow", validate_default=True, json_schema_extra={
+        "examples": [
+            {
+                "id": "1234",
+                "name": "Pod 'api-service-production' lacks memory",
+                "status": "firing",
+                "lastReceived": "2021-01-01T00:00:00.000Z",
+                "environment": "production",
+                "duplicateReason": None,
+                "service": "backend",
+                "source": ["prometheus"],
+                "message": "The pod 'api-service-production' lacks memory causing high error rate",
+                "description": "Due to the lack of memory, the pod 'api-service-production' is experiencing high error rate",
+                "severity": "critical",
+                "pushed": True,
+                "url": "https://www.keephq.dev?alertId=1234",
+                "labels": {
+                    "pod": "api-service-production",
+                    "region": "us-east-1",
+                    "cpu": "88",
+                    "memory": "100Mi",
+                },
+                "ticket_url": "https://www.keephq.dev?enrichedTicketId=456",
+                "fingerprint": "1234",
+            }
+        ]
+    }, use_enum_values=True, json_encoders={
+        # Converts enums to their values for JSON serialization
+        Enum: lambda v: v.value,
+    })
 
 
 class AlertWithIncidentLinkMetadataDto(AlertDto):
@@ -381,17 +387,17 @@ class UnEnrichAlertRequestBody(BaseModel):
 
 
 class DeduplicationRuleDto(BaseModel):
-    id: str | None  # UUID
+    id: str | None = None  # UUID
     name: str
     description: str
     default: bool
     distribution: list[dict]  # list of {hour: int, count: int}
-    provider_id: str | None  # None for default rules
+    provider_id: str | None = None  # None for default rules
     provider_type: str
-    last_updated: str | None
-    last_updated_by: str | None
-    created_at: str | None
-    created_by: str | None
+    last_updated: str | None = None
+    last_updated_by: str | None = None
+    created_at: str | None = None
+    created_by: str | None = None
     ingested: int
     dedup_ratio: float
     enabled: bool

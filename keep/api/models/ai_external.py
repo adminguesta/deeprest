@@ -20,8 +20,8 @@ class ExternalAIDto(BaseModel):
 
     last_time_reminded: datetime | None = None
 
-    api_url: str | None = Field(exclude=True)
-    api_key: str | None = Field(exclude=True)
+    api_url: str | None = Field(None, exclude=True)
+    api_key: str | None = Field(None, exclude=True)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -84,8 +84,8 @@ class ExternalAIConfigAndMetadataDto(BaseModel):
     algorithm_id: str
     tenant_id: str
     settings: list[Any] | Json[Any]
-    settings_proposed_by_algorithm: list[Any] | Json[Any] | None
-    feedback_logs: str | None
+    settings_proposed_by_algorithm: list[Any] | Json[Any] | None = None
+    feedback_logs: str | None = None
     algorithm: ExternalAIDto
 
     @classmethod

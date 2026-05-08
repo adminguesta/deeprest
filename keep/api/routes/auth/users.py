@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import field_validator, ConfigDict, BaseModel, Field
 
 from keep.api.models.user import User
 from keep.identitymanager.authenticatedentity import AuthenticatedEntity
@@ -20,21 +20,18 @@ class CreateUserRequest(BaseModel):
         None  # user can be assigned to group and get its roles from groups
     )
     groups: Optional[list[str]] = None
-
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class UpdateUserRequest(BaseModel):
-    email: Optional[str] = Field(alias="username")
+    email: Optional[str] = Field(None, alias="username")
     password: Optional[str] = None
     role: Optional[str] = Field(default=None)
     groups: Optional[list[str]] = None
+    model_config = ConfigDict(populate_by_name=True)
 
-    class Config:
-        allow_population_by_field_name = True
-
-    @validator("role", allow_reuse=True)
+    @field_validator("role")
+    @classmethod
     def validate_role(cls, v):
         if v == "":
             return None

@@ -3,6 +3,7 @@ from typing import Optional
 
 from sqlalchemy import TEXT, UniqueConstraint
 from sqlmodel import JSON, Column, Field, ForeignKey, Index, SQLModel
+from pydantic import ConfigDict
 
 
 class Provider(SQLModel, table=True):
@@ -26,10 +27,7 @@ class Provider(SQLModel, table=True):
     provider_metadata: dict = Field(
         sa_column=Column(JSON)
     )  # metadata about the provider, e.g: {"version": "1.0.0"}
-
-    class Config:
-        orm_mode = True
-        unique_together = ["tenant_id", "name"]
+    model_config = ConfigDict(from_attributes=True, unique_together=["tenant_id", "name"])
 
 
 class ProviderExecutionLog(SQLModel, table=True):
@@ -49,6 +47,4 @@ class ProviderExecutionLog(SQLModel, table=True):
     log_level: str = Field(default="INFO")  # INFO, WARNING, ERROR, DEBUG
     context: dict = Field(sa_column=Column(JSON), default={})
     execution_id: Optional[str] = None  # To group related logs together
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

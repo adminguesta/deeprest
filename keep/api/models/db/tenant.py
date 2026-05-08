@@ -3,6 +3,7 @@ from typing import List, Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel, UniqueConstraint
+from pydantic import ConfigDict
 
 
 class Tenant(SQLModel, table=True):
@@ -29,9 +30,7 @@ class TenantApiKey(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("tenant_id", "reference_id", name="unique_tenant_reference"),
     )
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TenantInstallation(SQLModel, table=True):

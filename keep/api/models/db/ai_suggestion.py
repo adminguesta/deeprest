@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
+from pydantic import ConfigDict
 
 
 class AISuggestionType(enum.Enum):
@@ -30,9 +31,7 @@ class AISuggestion(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     feedbacks: List["AIFeedback"] = Relationship(back_populates="suggestion")
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AIFeedback(SQLModel, table=True):
@@ -48,6 +47,4 @@ class AIFeedback(SQLModel, table=True):
     )
 
     suggestion: AISuggestion = Relationship(back_populates="feedbacks")
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

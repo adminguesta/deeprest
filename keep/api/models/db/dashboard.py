@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON
 from sqlmodel import Column, Field, SQLModel
+from pydantic import ConfigDict
 
 
 class Dashboard(SQLModel, table=True):
@@ -23,6 +24,4 @@ class Dashboard(SQLModel, table=True):
             "tenant_id", "dashboard_name", name="unique_dashboard_name_per_tenant"
         ),
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

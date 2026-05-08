@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import PrivateAttr
+from pydantic import ConfigDict, PrivateAttr
 from retry import retry
 from sqlalchemy import ForeignKey, event
 from sqlalchemy.exc import IntegrityError
@@ -179,9 +179,7 @@ class Incident(SQLModel, table=True):
     # @tb: _alerts is Alert, not explicitly typed because of circular dependency
     _alerts: List = PrivateAttr(default_factory=list)
     _enrichments: dict = PrivateAttr(default={})
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     __table_args__ = (
         Index(

@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List
 from uuid import UUID, uuid4
 
-from pydantic import PrivateAttr
+from pydantic import ConfigDict, PrivateAttr
 from sqlalchemy import ForeignKey, ForeignKeyConstraint, UniqueConstraint
 from sqlalchemy_utils import UUIDType
 from sqlmodel import JSON, TEXT, Column, Field, Index, Relationship, SQLModel
@@ -171,9 +171,7 @@ class Alert(SQLModel, table=True):
             "provider_id",
         ),
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AlertEnrichment(SQLModel, table=True):
@@ -197,9 +195,7 @@ class AlertEnrichment(SQLModel, table=True):
             "uselist": True,
         },
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AlertDeduplicationRule(SQLModel, table=True):
@@ -219,9 +215,7 @@ class AlertDeduplicationRule(SQLModel, table=True):
     ignore_fields: list[str] = Field(sa_column=Column(JSON), default=[])
     priority: int = Field(default=0)  # for future use
     is_provisioned: bool = Field(default=False)
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AlertDeduplicationEvent(SQLModel, table=True):
@@ -263,9 +257,7 @@ class AlertDeduplicationEvent(SQLModel, table=True):
             "date_hour",
         ),
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AlertField(SQLModel, table=True):
@@ -283,9 +275,7 @@ class AlertField(SQLModel, table=True):
             "ix_alert_field_provider_id_provider_type", "provider_id", "provider_type"
         ),
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AlertRaw(SQLModel, table=True):
@@ -304,9 +294,7 @@ class AlertRaw(SQLModel, table=True):
         Index("ix_alert_raw_tenant_id_error", "tenant_id", "error"),
         Index("ix_alert_raw_tenant_id_timestamp", "tenant_id", "timestamp"),
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AlertAudit(SQLModel, table=True):

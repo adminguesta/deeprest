@@ -237,7 +237,7 @@ def get_presets(
 
 
 class CreateOrUpdatePresetDto(BaseModel):
-    name: str | None
+    name: str | None = None
     options: list[PresetOption]
     is_private: bool = False  # if true visible to all users of that tenant
     is_noisy: bool = False  # if true, the preset will be noisy

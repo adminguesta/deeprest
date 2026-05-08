@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Json
@@ -12,12 +13,12 @@ class ExternalAI(BaseModel):
     Base model for external algorithms.
     """
 
-    name: str = None
-    description: str = None
-    version: int = None
-    api_url: str = None
-    api_key: str = None
-    config_default: Json = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    version: Optional[int] = None
+    api_url: Optional[str] = None
+    api_key: Optional[str] = None
+    config_default: Optional[Json] = None
 
     @property
     def unique_id(self):

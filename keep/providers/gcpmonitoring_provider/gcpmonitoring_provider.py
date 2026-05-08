@@ -19,8 +19,8 @@ from keep.providers.providers_factory import ProvidersFactory
 class LogEntry(pydantic.BaseModel):
     timestamp: datetime.datetime
     severity: str
-    payload: dict | None
-    http_request: dict | None
+    payload: dict | None = None
+    http_request: dict | None = None
     payload_exists: bool = False
     http_request_exists: bool = False
 

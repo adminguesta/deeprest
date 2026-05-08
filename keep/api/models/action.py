@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class ActionDTO(BaseModel):
-  id: Optional[str]
+  id: Optional[str] = None
   use: str
   name: str
   details: Union[dict[str, Any], None] = None

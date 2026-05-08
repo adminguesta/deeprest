@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 
 class Thresholds(BaseModel):
@@ -88,36 +88,34 @@ class DatadogAlertFormatDescription(BaseModel):
         "ci-tests alert",
         "error-tracking alert",
     ]
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "name": "Example-Monitor",
-                "type": "rum alert",
-                "query": 'formula("query2 / query1 * 100").last("15m") >= 0.8',
-                "message": "some message Notify: @hipchat-channel",
-                "tags": ["test:examplemonitor", "env:ci"],
-                "priority": 3,
-                "options": {
-                    "thresholds": {"critical": 0.8},
-                    "variables": [
-                        {
-                            "data_source": "rum",
-                            "name": "query2",
-                            "search": {"query": ""},
-                            "indexes": ["*"],
-                            "compute": {"aggregation": "count"},
-                            "group_by": [],
-                        },
-                        {
-                            "data_source": "rum",
-                            "name": "query1",
-                            "search": {"query": "status:error"},
-                            "indexes": ["*"],
-                            "compute": {"aggregation": "count"},
-                            "group_by": [],
-                        },
-                    ],
-                },
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "Example-Monitor",
+            "type": "rum alert",
+            "query": 'formula("query2 / query1 * 100").last("15m") >= 0.8',
+            "message": "some message Notify: @hipchat-channel",
+            "tags": ["test:examplemonitor", "env:ci"],
+            "priority": 3,
+            "options": {
+                "thresholds": {"critical": 0.8},
+                "variables": [
+                    {
+                        "data_source": "rum",
+                        "name": "query2",
+                        "search": {"query": ""},
+                        "indexes": ["*"],
+                        "compute": {"aggregation": "count"},
+                        "group_by": [],
+                    },
+                    {
+                        "data_source": "rum",
+                        "name": "query1",
+                        "search": {"query": "status:error"},
+                        "indexes": ["*"],
+                        "compute": {"aggregation": "count"},
+                        "group_by": [],
+                    },
+                ],
+            },
         }
+    })

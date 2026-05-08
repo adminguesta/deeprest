@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ValidationInfo, field_validator
 from sqlalchemy import String
 from sqlmodel import JSON, Column, Field, SQLModel
 
@@ -54,37 +54,40 @@ class MappRuleDtoBase(BaseModel):
     new_property_name: Optional[str] = None
     prefix_to_remove: Optional[str] = None
 
-    @validator("new_property_name")
-    def validate_new_property_name(cls, v, values):
-        if values.get("is_multi_level") and not v:
+    @field_validator("new_property_name")
+    @classmethod
+    def validate_new_property_name(cls, v, info: ValidationInfo):
+        if info.data.get("is_multi_level") and not v:
             raise ValueError(
                 "new_property_name is required when is_multi_level is True"
             )
         return v
 
-    @validator("matchers")
-    def validate_matchers(cls, v, values):
-        if values.get("is_multi_level") and len(v) > 1:
+    @field_validator("matchers")
+    @classmethod
+    def validate_matchers(cls, v, info: ValidationInfo):
+        if info.data.get("is_multi_level") and len(v) > 1:
             raise ValueError("Multi-level mapping can only have one matcher group")
         return v
 
 
 class MappingRuleDtoOut(MappRuleDtoBase, extra="ignore"):
     id: int
-    created_by: Optional[str]
+    created_by: Optional[str] = None
     created_at: datetime
     attributes: list[str] = []
-    updated_by: Optional[str] | None
-    last_updated_at: Optional[datetime] | None
+    updated_by: Optional[str] | None = None
+    last_updated_at: Optional[datetime] | None = None
     rows: Optional[list[dict]] = None
 
 
 class MappingRuleDtoIn(MappRuleDtoBase):
     rows: Optional[list[dict]] = None
 
-    @validator("rows", pre=True, always=True)
-    def validate_rows(cls, rows, values):
-        if not rows and values.get("type") == "csv":
+    @field_validator("rows", mode="before")
+    @classmethod
+    def validate_rows(cls, rows, info: ValidationInfo):
+        if not rows and info.data.get("type") == "csv":
             raise ValueError("Mapping of type CSV cannot have empty rows")
         return rows
 

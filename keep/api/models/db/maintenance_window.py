@@ -57,13 +57,13 @@ class MaintenanceRuleCreate(BaseModel):
 class MaintenanceRuleRead(BaseModel):
     id: int
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     created_by: str
     cel_query: str
     start_time: datetime
     end_time: datetime
-    duration_seconds: Optional[int]
-    updated_at: Optional[datetime]
+    duration_seconds: Optional[int] = None
+    updated_at: Optional[datetime] = None
     suppress: bool = False
     enabled: bool = True
     ignore_statuses: list[str] = DEFAULT_ALERT_STATUSES_TO_IGNORE

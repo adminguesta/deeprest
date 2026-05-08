@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel
 
 from keep.api.models.user import Group
 from keep.identitymanager.authenticatedentity import AuthenticatedEntity
@@ -15,9 +15,7 @@ class CreateOrUpdateGroupRequest(BaseModel):
     name: str
     roles: list[str]
     members: list[str]
-
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 @router.get("", description="Get all groups")

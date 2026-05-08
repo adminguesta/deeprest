@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from sqlalchemy import TEXT, DateTime, Index, PrimaryKeyConstraint, func
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel, UniqueConstraint
+from pydantic import ConfigDict
 
 
 def get_dummy_workflow_id(tenant_id: str) -> str:
@@ -37,9 +38,7 @@ class Workflow(SQLModel, table=True):
 
     executions: List["WorkflowExecution"] = Relationship(back_populates="workflow")
     versions: List["WorkflowVersion"] = Relationship(back_populates="workflow")
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkflowVersion(SQLModel, table=True):
@@ -164,9 +163,7 @@ class WorkflowExecution(SQLModel, table=True):
     workflow_to_incident_execution: "WorkflowToIncidentExecution" = Relationship(
         back_populates="workflow_execution"
     )
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkflowToAlertExecution(SQLModel, table=True):
@@ -201,6 +198,4 @@ class WorkflowExecutionLog(SQLModel, table=True):
     message: str = Field(sa_column=Column(TEXT))
     workflowexecution: Optional[WorkflowExecution] = Relationship(back_populates="logs")
     context: dict = Field(sa_column=Column(JSON))
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

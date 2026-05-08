@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import AnyUrl, HttpUrl, conint, errors
+from pydantic import Field, AnyUrl, HttpUrl, errors
 from pydantic.networks import MultiHostDsn, Parts
+from typing_extensions import Annotated
 
-UrlPort = conint(ge=1, le=65_535)
+UrlPort = Annotated[int, Field(ge=1, le=65_535)]
 
 
 class HttpsUrl(HttpUrl):

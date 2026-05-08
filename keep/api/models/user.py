@@ -15,9 +15,9 @@ class User(BaseModel, extra=Extra.ignore):
     email: str
     name: str
     role: Optional[str] = None
-    picture: Optional[str]
+    picture: Optional[str] = None
     created_at: str
-    last_login: Optional[str]
+    last_login: Optional[str] = None
     ldap: Optional[bool] = False
     groups: Optional[list[Group]] = []
 
@@ -31,15 +31,15 @@ class Role(BaseModel):
 
 
 class CreateOrUpdateRole(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    scopes: Optional[Set[str]]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    scopes: Optional[Set[str]] = None
 
 
 class PermissionEntity(BaseModel):
     id: str  # permission id
     type: str  # 'user' or 'group'
-    name: Optional[str]  # permission name
+    name: Optional[str] = None  # permission name
 
 
 class ResourcePermission(BaseModel):

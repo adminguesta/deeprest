@@ -42,7 +42,7 @@ class ExtractionRuleDtoBase(BaseModel):
 
 class ExtractionRuleDtoOut(ExtractionRuleDtoBase, extra="ignore"):
     id: int
-    created_by: Optional[str]
+    created_by: Optional[str] = None
     created_at: datetime
-    updated_by: Optional[str]
-    updated_at: Optional[datetime]
+    updated_by: Optional[str] = None
+    updated_at: Optional[datetime] = None

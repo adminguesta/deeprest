@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlmodel import Field, SQLModel
+from pydantic import ConfigDict
 
 class Secret(SQLModel, table=True):
     key: str = Field(primary_key=True)
@@ -9,6 +10,4 @@ class Secret(SQLModel, table=True):
     last_updated: datetime = Field(
         default_factory=datetime.utcnow, 
     )
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

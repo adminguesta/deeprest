@@ -47,10 +47,10 @@ class JsonPropertyAccessNode(PropertyAccessNode):
         self.property_to_extract = property_to_extract
         self.data_type = data_type
 
-    json_property_name: Optional[str]
-    property_to_extract: Optional[list[str]]
-    method_access_node: Optional[MethodAccessNode]
-    data_type: Optional[DataType]
+    json_property_name: Optional[str] = None
+    property_to_extract: Optional[list[str]] = None
+    method_access_node: Optional[MethodAccessNode] = None
+    data_type: Optional[DataType] = None
 
 class MultipleFieldsNode(Node):
     """
@@ -64,7 +64,7 @@ class MultipleFieldsNode(Node):
         fields (list[PropertyAccessNode]): A list of PropertyAccessNode instances to initialize the node with.
     """
     fields: list[PropertyAccessNode]
-    data_type: Optional[DataType]
+    data_type: Optional[DataType] = None
 
 class PropertiesMappingException(Exception):
     """

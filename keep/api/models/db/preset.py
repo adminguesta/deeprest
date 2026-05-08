@@ -2,9 +2,10 @@ import enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, conint, constr
+from pydantic import Field, StringConstraints, ConfigDict, BaseModel
 from sqlalchemy import UniqueConstraint
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
+from typing_extensions import Annotated
 
 
 class StaticPresetsId(enum.Enum):
@@ -35,7 +36,7 @@ class Tag(SQLModel, table=True):
 
 
 class TagDto(BaseModel):
-    id: Optional[str]  # for new tag from the frontend, the id would be None
+    id: Optional[str] = None  # for new tag from the frontend, the id would be None
     name: str
 
 
@@ -64,13 +65,12 @@ class Preset(SQLModel, table=True):
 
 # datatype represents a query with CEL (str) and SQL (dict)
 class PresetSearchQuery(BaseModel):
-    cel_query: constr(min_length=0)
+    cel_query: Annotated[str, StringConstraints(min_length=0)]
     sql_query: Dict[str, Any]
-    limit: conint(ge=0) = 1000
-    timeframe: conint(ge=0) = 0
-
-    class Config:
-        allow_mutation = False
+    limit: Annotated[int, Field(ge=0)] = 1000
+    timeframe: Annotated[int, Field(ge=0)] = 0
+    # P17 V2: allow_mutation=False → frozen=True
+    model_config = ConfigDict(frozen=True)
 
 
 class PresetDto(BaseModel, extra="ignore"):

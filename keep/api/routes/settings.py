@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 from sqlmodel import Session
 
 from keep.api.core.config import config
@@ -40,9 +40,7 @@ class CreateUserRequest(BaseModel):
     email: str = Field(alias="username")
     password: Optional[str] = None  # for auth0 we don't need a password
     role: str
-
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 @router.get(

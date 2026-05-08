@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel
 from sqlalchemy import DateTime, ForeignKey
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel, func
 
@@ -76,10 +76,7 @@ class TopologyService(SQLModel, table=True):
     applications: List[TopologyApplication] = Relationship(
         back_populates="services", link_model=TopologyServiceApplication
     )
-
-    class Config:
-        orm_mode = True
-        unique_together = ["tenant_id", "service", "environment", "source_provider_id"]
+    model_config = ConfigDict(from_attributes=True, unique_together=["tenant_id", "service", "environment", "source_provider_id"])
 
 
 class TopologyServiceDependency(SQLModel, table=True):
@@ -114,7 +111,7 @@ class TopologyServiceDependency(SQLModel, table=True):
 
 
 class TopologyServiceDtoBase(BaseModel, extra="ignore"):
-    source_provider_id: Optional[str]
+    source_provider_id: Optional[str] = None
     repository: Optional[str] = None
     tags: Optional[List[str]] = None
     service: str
@@ -214,7 +211,7 @@ class TopologyServiceDtoOut(TopologyServiceDtoBase):
     id: str
     dependencies: List[TopologyServiceDependencyDto]
     application_ids: List[UUID]
-    updated_at: Optional[datetime]
+    updated_at: Optional[datetime] = None
 
     @classmethod
     def from_orm(
@@ -282,8 +279,8 @@ class TopologyServiceDependencyCreateRequestDto(BaseModel, extra="ignore"):
 class TopologyServiceDependencyUpdateRequestDto(
     TopologyServiceDependencyCreateRequestDto, extra="ignore"
 ):
-    service_id: Optional[int]
-    depends_on_service_id: Optional[int]
+    service_id: Optional[int] = None
+    depends_on_service_id: Optional[int] = None
     id: int
 
 
