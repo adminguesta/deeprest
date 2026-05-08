@@ -13,7 +13,8 @@
 | 2 | 本地 clone 到 `~/keep-fork` | ✅ | 绕开 `~/deeprest`(macOS 大小写不敏感占用) |
 | 3 | remote 重命名 origin / keep-upstream | ✅ | 见 §1 |
 | 4 | tag `keep-baseline-day173` 上游 main | ✅ | 上游 head `df4e48d2`(2026-05-03)|
-| 5 | docker-compose.dev.yml 起 + healthy | 🟡 | 见 §3,build 完成情况另记 |
+| 5 | docker-compose.dev.yml 起 + healthy | ❌ → 退 Plan B | 见 §3,buildkit 在 poetry resolver 阶段静默 30+ min,退本机 poetry |
+| 5b | **Plan B**:host venv `poetry install --no-root` | ✅ | 见 §3,243 deps 装齐 + keep CLI / keep.agents 全跑通 |
 | 6 | 摸清关键路径(bl/providers/workflowmanager/rulesengine/UI) | ✅ | 见 §2 |
 | 7 | 建 `keep/agents/` 包骨架 | ✅ | 见 §4,smoke test 2 个全绿 |
 | 8 | pyproject 加 pydantic-ai | ❌ **推到 Day 2** | 见 §5 风险 |
@@ -60,16 +61,50 @@ keep-baseline-day173    # → keep-upstream/main @ df4e48d2 (2026-05-03)
 
 ---
 
-## 3. docker-compose 状态
+## 3. docker-compose 状态 + Plan B(host venv)
+
+### 3.1 docker-compose dev 真实结果
 
 dev 栈:
-- `keep-frontend-dev`(node:alpine + npm install)— build
-- `keep-backend-dev`(python:3.11.6-slim + poetry install)— build
-- `keep-websocket-server`(quay.io/soketi/soketi:1.4-16-debian)— pull
+- `keep-frontend-dev`(node:alpine + npm install)— ✅ build 通过
+- `keep-backend-dev`(python:3.11.6-slim + poetry install)— ❌ **buildkit 卡在 Poetry 1.3.2 resolver 阶段**(30+ min 静默,无输出),两次重试同样症状
+- `keep-websocket-server`(quay.io/soketi/soketi:1.4-16-debian)— ✅ pull 完成
 
-启动命令:`docker compose -f docker-compose.dev.yml up -d --build`
+**根因**:Keep Dockerfile 用 `poetry==1.3.2`(2022 年版本),resolver 在 243 deps 上跑得极慢且**默认 verbosity 没任何输出**,Docker Desktop VM 资源(7.6 GB / 10 CPU)进一步放大。L7 不动主线代码意味着不能改 Dockerfile.dev.api 里的 poetry 版本。
 
-**Day 1 卡点**:首次 build 时间 = node_modules + poetry install 完整跑一遍,本机 ≈ 10–20 min。Day 1 启了后台 build,实际 healthy 验证落 Day 2 早晨复核(留 `docker compose ps` 命令在文档 §6)。
+### 3.2 Plan B(实际跑通的路径)— host venv
+
+```bash
+# Python 3.13 复用老 DeepREST .venv(在 Keep 的 >=3.11,<3.14 范围内)
+/Users/chenxi/deeprest/.venv/bin/pip install poetry  # poetry 2.4.0(比 1.3.2 快 5×+)
+
+cd ~/keep-fork
+/Users/chenxi/deeprest/.venv/bin/poetry config virtualenvs.in-project true
+/Users/chenxi/deeprest/.venv/bin/poetry env use /Users/chenxi/deeprest/.venv/bin/python3.13
+PIP_DEFAULT_TIMEOUT=300 /Users/chenxi/deeprest/.venv/bin/poetry install --no-root --no-interaction
+# → 243 packages installed(2 个 anthropic / azure-mgmt-containerservice 第一次 PyPI 超时,重跑通过)
+```
+
+**验证(全部 ✅)**:
+```
+$ .venv/bin/python -c "import keep" → OK(namespace package)
+$ .venv/bin/python -c "from keep.agents.models import AlertVerdict, CandidateAlert" → OK
+$ .venv/bin/python -m pytest keep/agents/tests/ -v
+  → 2 passed in 0.02s(在 Pydantic V1 venv 里跑,确认 dataclass 风格无冲突)
+$ PYTHONPATH=. .venv/bin/python -m keep.cli.cli --help
+  → 全套子命令(alert / api / auth / config / extraction / mappings / provider / version / whoami / workflow)
+```
+
+### 3.3 实际"跑通骨架"的定义(Day 1 修正)
+
+plan 文档原句"keep run 起得来,docker-compose 全套服务健康"是 **Phase 1 第 7 天验收标准**,不是 Day 1 卡点。Day 1 的目标是"摸清结构 + 搭骨架",Plan B 实现的是:
+- Keep 全 243 deps 可解、可装(host arm64 native wheels,无 buildkit emulation 损耗)
+- Keep CLI 可调
+- `keep.agents` 子包 import + 跑测全绿(在 V1 venv 里)
+
+后续(Day 2-7):
+- Day 2 早晨先选 V1/V2 路径,**docker build 那头 Day 7 收口前再回头试一次**(可能要把 Dockerfile poetry 升 2.x,但这就是动主线 — 走 ChangeAgent 流程)
+- Day 4-5 e2e 时跑 backend:`PYTHONPATH=. .venv/bin/python -m keep.cli.cli api`(host 直跑,跳过 docker)
 
 ---
 
@@ -134,25 +169,31 @@ Pydantic AI(0.x stable)硬要求 Pydantic V2。两者**进程内不能共存** �
 ```bash
 cd ~/keep-fork
 
-# 6.1 docker 服务状态
-docker compose -f docker-compose.dev.yml ps
-# 期望:keep-frontend-dev / keep-backend-dev / keep-websocket-server 全 Up
-# backend 健康:curl localhost:8080/healthcheck
-# frontend 健康:curl localhost:3000
+# 6.1 host venv 健康
+.venv/bin/python -c "from keep.agents.models import AlertVerdict, CandidateAlert; print('OK')"
+# 期望:OK
 
 # 6.2 agents 骨架 smoke test
-PYTHONPATH=. python -m pytest keep/agents/tests/ -v
-# 期望:2 passed
+.venv/bin/python -m pytest keep/agents/tests/ -v
+# 期望:2 passed in <0.1s
 
-# 6.3 git 状态
+# 6.3 keep CLI
+PYTHONPATH=. .venv/bin/python -m keep.cli.cli --help
+# 期望:列出 alert/api/auth/config/... 子命令
+
+# 6.4 git 状态
 git status
 git log --oneline -3
-# 期望:Day 1 commit 在 phase-1/agents,未推 origin
+# 期望:Day 1 commit 在 phase-1/agents @ origin/phase-1/agents
 
-# 6.4 V1/V2 影响面预演(Day 2 第一步)
-pip install bump-pydantic
-bump-pydantic keep/ --dry-run | tee /tmp/pydantic-v2-dryrun.log
-wc -l /tmp/pydantic-v2-dryrun.log
+# 6.5 V1/V2 影响面预演(Day 2 第一步)
+.venv/bin/pip install bump-pydantic
+.venv/bin/bump-pydantic keep/ --diff > /tmp/pydantic-v2-dryrun.diff
+wc -l /tmp/pydantic-v2-dryrun.diff   # 看影响行数
+
+# 6.6(可选)docker compose dev 二战
+# 如果 Day 7 要,先把 Dockerfile.dev.api 的 poetry==1.3.2 升 2.x(走主线 ChangeAgent 流程)
+docker compose -f docker-compose.dev.yml ps
 ```
 
 ---
