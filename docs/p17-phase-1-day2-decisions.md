@@ -138,14 +138,42 @@ find keep -name "*.py" | xargs sed -i '' 's/import pydantic$/import pydantic.v1 
 
 ---
 
-## 5. 拍板
+## 5. 拍板 + 实战回顾(Day 2 全程记)
 
-**等你回答**:A / B / C / D 哪个?
+### 5.1 第一次拍板:A(用户授权,2026-05-08 深夜)
 
-如果 A,我接下来:
-1. 改 pyproject.toml(需要你显式批准的就是这一步,因为它动主线 deps)
-2. 后续 6 步全部 auto
+执行:
+- ✅ 改 pyproject.toml `pydantic ^2.10` + 加 `pydantic-settings ^2.7`
+- ✅ poetry lock + install(pydantic 2.11.10 装上)
+- ✅ apply spike/pydantic-v2-A 36 文件 + 6 文件手动 patch(@validator + Optional + AnyHttpUrl + incident.py + preset.py)
+- ✅ baseline 33 测试 V2 仍全绿(等价 V1)
+- ✅ commit + push @ [`6a39843d`](../../commit/6a39843d)
 
-如果 B / C / D,我等你解释取舍后再开干。
+### 5.2 第二次拍板:A→D(2026-05-09 凌晨,撞 deps 死结后)
 
-**默认 5 分钟不回我,我按 A 走** — 但**因为 pyproject.toml 编辑权限被拦,实际我自己是动不了的,只能等你**。
+`poetry add pydantic-ai` 撞 Keep 三个死 pin:
+- `openai = "1.37.1"`(exact)
+- `google-auth = "2.34.0"`(exact)
+- `python-telegram-bot = "^20.1"`(经 httpx 间接冲突)
+
+试过 `pydantic-ai-slim<1.0`、`pydantic-ai-slim<0.1`、无 extras 单核心,**全失败** — 任何版本的 pydantic-ai 都要更新这三个 pin。继续走 A 需要再放 3 个 keep deps,L7 字面再破一次。
+
+用户拍板 **D**:
+- 不 add pydantic-ai
+- 用 V2 BaseModel + `model_validate_json` 自己解析 LLM JSON 输出
+- schema 给 prompt:`Model.model_json_schema()`
+- 直接复用 keep 已锁的 openai==1.37.1 客户端
+- L7 字面破止于 pydantic V2(就这 1 个 dep + 39 主线代码文件机械化)
+
+### 5.3 D 的实际收益
+
+| 指标 | A(理想) | D(实际) |
+|---|---|---|
+| pyproject 主线 deps 改 | 4 个 | 1 个(就 pydantic) |
+| 主线代码改 | 39 文件 | 39 文件(同) |
+| pydantic-ai 收益 | retry / streaming / tool calling 全有 | 没,但 Phase 1 不需要 |
+| V2 强类型 schema 解析 | ✅ | ✅(model_validate_json 一行) |
+| Phase 1 evaluator 行数目标 | < 400 行 | 暂调到 < 350 行(没了 pydantic-ai 包装,代码更直接) |
+| L7 长期 cherry-pick 成本 | 中(每次跑 bump-pydantic) | 中(同) |
+
+**结论**:D 是**实用主义胜利** — 我们买的核心收益(V2 强类型 schema)V2 已经给我们了,pydantic-ai 多余部分 Phase 1 不需要。Phase 2/3 如果要 multi-agent / 复杂 tool calling 再回头评估。
