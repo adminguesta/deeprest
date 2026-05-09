@@ -204,7 +204,7 @@ async def test_evaluate_e2e_happy_path():
         assert "f5.pool.member.health" in user
         return _good_llm_payload(c)
 
-    v = await evaluate(c, ctx, _llm_call=fake_llm)
+    v = await evaluate(c, ctx, _llm_call=fake_llm, audit=False)
     assert v.fallback_reason is None  # LLM 成功路径,fallback_reason 应空
     assert v.should_alert is True
     assert len(v.reasoning_steps) == 3
@@ -219,7 +219,7 @@ async def test_evaluate_llm_exception_falls_back():
     async def boom(system, user):
         raise TimeoutError("LLM 超时")
 
-    v = await evaluate(c, ctx, _llm_call=boom)
+    v = await evaluate(c, ctx, _llm_call=boom, audit=False)
     # L3 不抛,走 fallback
     assert v.fallback_reason is not None
     assert "LLM call error" in v.fallback_reason
@@ -235,7 +235,7 @@ async def test_evaluate_llm_returns_garbage_falls_back():
     async def garbage(system, user):
         return "hi I'm just chatting, no JSON"
 
-    v = await evaluate(c, ctx, _llm_call=garbage)
+    v = await evaluate(c, ctx, _llm_call=garbage, audit=False)
     assert v.fallback_reason == "LLM returned unparseable JSON"
 
 
@@ -259,7 +259,7 @@ async def test_evaluate_llm_violates_p16_1_minimum_falls_back():
             }
         )
 
-    v = await evaluate(c, ctx, _llm_call=thin)
+    v = await evaluate(c, ctx, _llm_call=thin, audit=False)
     assert v.fallback_reason == "LLM output failed P16.1 minimum contract"
 
 
@@ -267,7 +267,7 @@ async def test_evaluate_llm_violates_p16_1_minimum_falls_back():
 async def test_evaluate_uses_default_context_when_none():
     """没传 ctx 也能跑(默认 EvaluatorContext)。"""
     c = _candidate("low")
-    v = await evaluate(c, _llm_call=None)  # 没 LLM 配置 → fallback
+    v = await evaluate(c, _llm_call=None, audit=False)  # 没 LLM 配置 → fallback
     # 没配 LLM → fallback,low 抑制
     assert v.fallback_reason is not None
     assert v.should_alert is False

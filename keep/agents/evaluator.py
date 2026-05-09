@@ -25,6 +25,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from keep.agents.audit_log import record_decision
 from keep.agents.models import AlertVerdict, CandidateAlert
 from keep.agents.prompts.evaluator_system import build_system_prompt
 
@@ -315,6 +316,7 @@ async def evaluate(
     ctx: Optional[EvaluatorContext] = None,
     *,
     _llm_call=None,  # test seam:让 mock 替换 _call_llm
+    audit: bool = True,  # 测试可关掉避免污染默认 audit 文件
 ) -> AlertVerdict:
     """P17 Phase 1 evaluator 主入口。
 
@@ -322,6 +324,8 @@ async def evaluate(
         verdict = await evaluate(candidate, ctx)
 
     L3 不变量:任何异常 → `_rule_based_fallback`,**永不抛**给调用方。
+    L2 不变量:每个决策落 audit hash(`keep.agents.audit_log.record_decision`),
+    可用 `audit=False` 关掉(单元测试、批量 backfill 等场景)。
     """
     if ctx is None:
         ctx = EvaluatorContext(candidate=candidate)
@@ -333,33 +337,42 @@ async def evaluate(
     user_prompt = _build_user_prompt(ctx)
 
     llm_call = _llm_call or _call_llm
+    verdict: Optional[AlertVerdict] = None
     try:
         raw = await llm_call(system_prompt, user_prompt)
     except Exception as e:
         log.warning("LLM 调用失败 → fallback:%s", e)
-        return _rule_based_fallback(ctx, fallback_reason=f"LLM call error: {e}")
+        verdict = _rule_based_fallback(ctx, fallback_reason=f"LLM call error: {e}")
+    else:
+        parsed = _parse_verdict(raw, candidate=candidate)
+        if parsed is None:
+            verdict = _rule_based_fallback(
+                ctx, fallback_reason="LLM returned unparseable JSON"
+            )
+        elif (
+            len(parsed.reasoning_steps) < 2
+            or len(parsed.runbook_steps) < 2
+            or not parsed.impact_analysis
+        ):
+            # P16.1 不变量:reasoning_steps / runbook_steps 至少 2 条,impact_analysis 必填
+            log.warning(
+                "LLM 返结构不达 P16.1 最小契约 → fallback (reasoning=%d / runbook=%d / impact=%s)",
+                len(parsed.reasoning_steps),
+                len(parsed.runbook_steps),
+                bool(parsed.impact_analysis),
+            )
+            verdict = _rule_based_fallback(
+                ctx, fallback_reason="LLM output failed P16.1 minimum contract"
+            )
+        else:
+            verdict = parsed
 
-    verdict = _parse_verdict(raw, candidate=candidate)
-    if verdict is None:
-        return _rule_based_fallback(
-            ctx, fallback_reason="LLM returned unparseable JSON"
-        )
-
-    # P16.1 不变量:reasoning_steps / runbook_steps 至少 2 条,impact_analysis 必填
-    if (
-        len(verdict.reasoning_steps) < 2
-        or len(verdict.runbook_steps) < 2
-        or not verdict.impact_analysis
-    ):
-        log.warning(
-            "LLM 返结构不达 P16.1 最小契约 → fallback (reasoning=%d / runbook=%d / impact=%s)",
-            len(verdict.reasoning_steps),
-            len(verdict.runbook_steps),
-            bool(verdict.impact_analysis),
-        )
-        return _rule_based_fallback(
-            ctx, fallback_reason="LLM output failed P16.1 minimum contract"
-        )
+    # L2:audit 落档(只 hash,不存 raw)
+    if audit:
+        try:
+            record_decision(candidate, verdict)
+        except Exception as e:  # 防御:audit 失败也不影响 verdict 返回
+            log.warning("audit record_decision 失败:%s", e)
 
     return verdict
 
