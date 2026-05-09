@@ -35,6 +35,7 @@ from keep.api.logging import CONFIG as logging_config
 from keep.api.middlewares import LoggingMiddleware
 from keep.api.routes import (
     actions,
+    agents,
     ai,
     alerts,
     dashboard,
@@ -292,6 +293,8 @@ def get_app(
     app.include_router(actions.router, prefix="/actions", tags=["actions"])
     app.include_router(ai.router, prefix="/ai", tags=["ai"])
     app.include_router(healthcheck.router, prefix="/healthcheck", tags=["healthcheck"])
+    # P17 Phase 1 — DeepREST AI evaluator(plan §1 允许的"新文件 + 1 行注册")
+    app.include_router(agents.router, prefix="/agents", tags=["agents"])
     app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
     app.include_router(incidents.router, prefix="/incidents", tags=["incidents"])
     app.include_router(settings.router, prefix="/settings", tags=["settings"])
